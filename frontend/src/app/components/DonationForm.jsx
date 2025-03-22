@@ -39,6 +39,8 @@ export default function DecentralizedGovernment() {
     }
   };
 
+
+
   async function getWalletBalance(address) {
     if (window.ethereum && address) {
       try {
