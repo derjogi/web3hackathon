@@ -2,14 +2,21 @@
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import WalletConnect from './WalletConnect';
+// import { ERC20_ABI } from '../utils/transferNZDD';
 
 function getWallets() {
   const walletsJson = process.env.NEXT_PUBLIC_WALLETS || '[]';
   return JSON.parse(walletsJson);
 }
 
+export const ERC20_ABI = [
+  "function balanceOf(address owner) view returns (uint256)",
+  "function transfer(address to, uint256 amount) returns (bool)",
+  "function decimals() view returns (uint8)"
+];
+
 export default function DecentralizedGovernment() {
-  const [currentBalance, setCurrentBalance] = useState(100);
+  const [currentBalance, setCurrentBalance] = useState(0);
   const [totalDonation, setTotalDonation] = useState(0);
   const [errorMessage, setErrorMessage] = useState('');
   const [transactions, setTransactions] = useState([]);
@@ -21,6 +28,7 @@ export default function DecentralizedGovernment() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamWallet, setNewTeamWallet] = useState('');
+  const [nzddBalance, setNzddBalance] = useState(0);
 
   useEffect(() => {
     calculateAmounts();
@@ -33,12 +41,12 @@ export default function DecentralizedGovernment() {
     
     if (newAccount) {
       await getWalletBalance(newAccount);
+      await getNZDDBalance(newAccount);
     } else {
       setEthBalance(0);
+      setNzddBalance(0);
     }
   };
-
-
 
   async function getWalletBalance(address) {
     if (window.ethereum && address) {
@@ -50,6 +58,34 @@ export default function DecentralizedGovernment() {
         setCurrentBalance(parseFloat(etherBalance)); // Update current balance with ETH balance
       } catch (error) {
         console.error("Error getting wallet balance:", error);
+      }
+    }
+  }
+
+  async function getNZDDBalance(address) {
+    if (window.ethereum && address) {
+      try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        // Get the NZDD token address from environment variables (same as in transferNZDD.jsx)
+        const nzddTokenAddress = process.env.NEXT_PUBLIC_NZDD_TOKEN_ADDRESS;
+        
+        // Create contract instance
+        const nzddContract = new ethers.Contract(nzddTokenAddress, ERC20_ABI, provider);
+        
+        // Get decimals and balance
+        const decimals = await nzddContract.decimals();
+        const balance = await nzddContract.balanceOf(address);
+
+        console.log("NZDD balance:", balance.toString());
+        
+        // Format the balance
+        const formattedBalance = ethers.utils.formatUnits(balance, decimals);
+        setNzddBalance(parseFloat(formattedBalance));
+        
+        // Update current balance with NZDD balance instead of ETH balance
+        setCurrentBalance(parseFloat(formattedBalance));
+      } catch (error) {
+        console.error("Error getting NZDD balance:", error);
       }
     }
   }
@@ -118,7 +154,7 @@ export default function DecentralizedGovernment() {
     setTransactions(prev => [transaction, ...prev]);
   };  
 
-  const submitVotes = async () => {
+  const submitTransaction = async () => {
     const totalAmount = Object.values(cart).reduce((sum, amount) => sum + amount, 0);
   
     if (totalAmount <= 0) {
@@ -279,7 +315,7 @@ export default function DecentralizedGovernment() {
           <div className="flex justify-between items-center py-3 border-b border-gray-200">
             <span>Current Balance:</span>
             <span className="font-bold text-green-600 transition-colors duration-500">
-              {ethBalance.toFixed(4)} ETH
+              {nzddBalance.toFixed(4)} NZDD
             </span>
           </div>
         </div>
@@ -445,7 +481,7 @@ export default function DecentralizedGovernment() {
         </div>
 
         <button 
-          onClick={submitVotes}
+          onClick={submitTransaction}
           disabled={Object.values(cart).reduce((sum, amount) => sum + amount, 0) <= 0 || 
                    Object.values(cart).reduce((sum, amount) => sum + amount, 0) > currentBalance}
           className={`w-full py-3 px-5 text-white font-bold rounded-lg transition-all ${
