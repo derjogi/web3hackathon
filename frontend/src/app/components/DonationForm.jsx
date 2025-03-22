@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
+import WalletConnect from './WalletConnect';
 
 export default function DecentralizedGovernment() {
   const [currentBalance, setCurrentBalance] = useState(100);
@@ -11,78 +12,32 @@ export default function DecentralizedGovernment() {
   const [account, setAccount] = useState('');
   const [network, setNetwork] = useState('');
   const [ethBalance, setEthBalance] = useState(0);
-
-  const teams = [
+  const [teams, setTeams] = useState([
     { name: "Cats Team", wallet: "xo...73" },
     { name: "Dogs Team", wallet: "xo...72" },
     { name: "Apes Team", wallet: "xo...55" },
     { name: "Kiwi Team", wallet: "xo...77" },
     { name: "Tuatara Team", wallet: "xo...123" }
-  ];
+  ]);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [newTeamName, setNewTeamName] = useState('');
+  const [newTeamWallet, setNewTeamWallet] = useState('');
 
   useEffect(() => {
     calculateAmounts();
   }, [totalDonation]);
 
-  useEffect(() => {
-    // Check if wallet is already connected
-    checkWalletConnection();
+  // Handle account changes from WalletConnect component
+  const handleAccountChange = async (newAccount, newNetwork) => {
+    setAccount(newAccount);
+    setNetwork(newNetwork);
     
-    // Listen for account changes
-    if (window.ethereum) {
-      window.ethereum.on('accountsChanged', (accounts) => {
-        if (accounts.length > 0) {
-          setAccount(accounts[0]);
-          getWalletBalance(accounts[0]);
-        } else {
-          setAccount('');
-          setEthBalance(0);
-        }
-      });
-    }
-    
-    return () => {
-      if (window.ethereum) {
-        window.ethereum.removeListener('accountsChanged', () => {});
-      }
-    };
-  }, []);
-
-  async function checkWalletConnection() {
-    if (window.ethereum) {
-      try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const accounts = await provider.listAccounts();
-        
-        if (accounts.length > 0) {
-          setAccount(accounts[0]);
-          const network = await provider.getNetwork();
-          setNetwork(network.name);
-          getWalletBalance(accounts[0]);
-        }
-      } catch (error) {
-        console.error("Error checking wallet connection:", error);
-      }
-    }
-  }
-
-  async function connectWallet() {
-    if (window.ethereum) {
-      try {
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const network = await provider.getNetwork();
-        
-        setAccount(accounts[0]);
-        setNetwork(network.name);
-        getWalletBalance(accounts[0]);
-      } catch (error) {
-        console.error("User denied account access");
-      }
+    if (newAccount) {
+      await getWalletBalance(newAccount);
     } else {
-      alert("Please install MetaMask!");
+      setEthBalance(0);
     }
-  }
+  };
 
   async function getWalletBalance(address) {
     if (window.ethereum && address) {
@@ -173,7 +128,7 @@ export default function DecentralizedGovernment() {
     }
 
     // Build confirmation message
-    let confirmMessage = "Are you sure you want to submit the following votes?\n\n";
+    let confirmMessage = "Are you sure you want to submit the following NZDD?\n\n";
     let hasVotes = false;
 
     for (const [teamIndex, amount] of Object.entries(cart)) {
@@ -203,7 +158,7 @@ export default function DecentralizedGovernment() {
       setCurrentBalance(prev => prev - totalAmount);
       resetCart();
 
-      alert(`Successfully submitted votes totaling ${totalAmount.toFixed(2)} NZDD!`);
+      alert(`Successfully submitted NZDD totaling ${totalAmount.toFixed(2)} NZDD!`);
     }
   };
 
@@ -222,47 +177,185 @@ export default function DecentralizedGovernment() {
     calculateAmounts();
   };
 
+  const handleTeamNameChange = (index, newName) => {
+    const updatedTeams = [...teams];
+    updatedTeams[index].name = newName;
+    setTeams(updatedTeams);
+  };
+
+  const handleWalletChange = (index, newWallet) => {
+    const updatedTeams = [...teams];
+    updatedTeams[index].wallet = newWallet;
+    setTeams(updatedTeams);
+  };
+
+  const addNewTeam = () => {
+    if (newTeamName.trim() === '' || newTeamWallet.trim() === '') {
+      alert('Please enter both team name and wallet address');
+      return;
+    }
+    
+    setTeams([...teams, { name: newTeamName, wallet: newTeamWallet }]);
+    setNewTeamName('');
+    setNewTeamWallet('');
+  };
+
+  const removeTeam = (index) => {
+    if (confirm(`Are you sure you want to remove ${teams[index].name}?`)) {
+      const updatedTeams = teams.filter((_, i) => i !== index);
+      setTeams(updatedTeams);
+      
+      // Update cart to remove the deleted team
+      const updatedCart = { ...cart };
+      delete updatedCart[index];
+      
+      // Reindex the cart keys
+      const newCart = {};
+      Object.entries(updatedCart).forEach(([key, value]) => {
+        const keyNum = parseInt(key);
+        if (keyNum > index) {
+          newCart[keyNum - 1] = value;
+        } else {
+          newCart[key] = value;
+        }
+      });
+      
+      setCart(newCart);
+    }
+  };
+
+  const toggleEditMode = () => {
+    setIsEditMode(!isEditMode);
+  };
+
   return (
     <div className="max-w-3xl mx-auto bg-white p-6 md:p-8 rounded-lg shadow-md">
-      <div className="mb-8 pb-4 border-b-2 border-gray-200">
-        <h1 className="text-3xl font-bold text-blue-600 mb-3">Decentralized government documents</h1>
+      <div className="mb-8 pb-4 border-b-2 border-gray-200 flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-blue-600">Hackathon People's Choice</h1>
+        <div className="wallet-connect-container">
+          <WalletConnect onAccountChange={handleAccountChange} />
+        </div>
       </div>
 
-      <div className="mb-8 p-5 bg-gray-50 rounded-lg">
+      {account && (
+        <div className="mb-8 p-5 bg-gray-50 rounded-lg">
+          <div className="flex justify-between items-center py-3 border-b border-gray-200">
+            <span>Connected Address:</span>
+            <span className="font-bold text-blue-600">{`${account.substring(0, 6)}...${account.substring(38)}`}</span>
+          </div>
+          <div className="flex justify-between items-center py-3 border-b border-gray-200">
+            <span>Network:</span>
+            <span className="font-bold text-blue-600">{network}</span>
+          </div>
+          <div className="flex justify-between items-center py-3 border-b border-gray-200">
+            <span>Current Balance:</span>
+            <span className="font-bold text-green-600 transition-colors duration-500">
+              {ethBalance.toFixed(4)} ETH
+            </span>
+          </div>
+        </div>
+      )}
 
-        {account ? (
-          <>
-            <label htmlFor="wallet" className="block mb-1 font-semibold text-gray-600">Wallet Address:</label>
-            <input 
-              type="text" 
-              id="wallet" 
-              className="w-full p-3 mb-4 border border-gray-300 rounded-lg text-base" 
-              value={account}
-              readOnly
-            />
-            <div className="flex justify-between items-center py-3 border-b border-gray-200">
-              <span>Network:</span>
-              <span className="font-bold text-blue-600">{network}</span>
-            </div>
-            <div className="flex justify-between items-center py-3 border-b border-gray-200">
-              <span>Current Balance:</span>
-              <span className="font-bold text-green-600 transition-colors duration-500">
-                {ethBalance.toFixed(4)} ETH
-              </span>
-            </div>
-          </>
-        ) : (
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-blue-600">Teams Management</h2>
           <button 
-            onClick={connectWallet}
-            className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            onClick={toggleEditMode}
+            className={`px-4 py-2 rounded-lg text-white font-medium ${isEditMode ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'}`}
           >
-            Connect Wallet
+            {isEditMode ? 'Done Editing' : 'Edit Teams'}
           </button>
+        </div>
+
+        {isEditMode && (
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+            <h3 className="text-lg font-semibold mb-3">Add New Team</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block mb-1 text-sm font-medium text-gray-700">Team Name</label>
+                <input 
+                  type="text" 
+                  className="w-full p-2 border border-gray-300 rounded-lg" 
+                  value={newTeamName}
+                  onChange={(e) => setNewTeamName(e.target.value)}
+                  placeholder="Enter team name"
+                />
+              </div>
+              <div>
+                <label className="block mb-1 text-sm font-medium text-gray-700">Wallet Address</label>
+                <input 
+                  type="text" 
+                  className="w-full p-2 border border-gray-300 rounded-lg" 
+                  value={newTeamWallet}
+                  onChange={(e) => setNewTeamWallet(e.target.value)}
+                  placeholder="Enter wallet address"
+                />
+              </div>
+            </div>
+            <button 
+              onClick={addNewTeam}
+              className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded"
+            >
+              Add Team
+            </button>
+          </div>
         )}
+
+        <div className="overflow-x-auto">
+          <table className="w-full mb-5">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="p-3 text-left border-b-2 border-gray-200">Team</th>
+                <th className="p-3 text-left border-b-2 border-gray-200">Wallet</th>
+                {isEditMode && <th className="p-3 text-left border-b-2 border-gray-200">Actions</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {teams.map((team, index) => (
+                <tr key={index} className="border-b border-gray-100">
+                  <td className="p-3">
+                    {isEditMode ? (
+                      <input 
+                        type="text" 
+                        className="w-full p-2 border border-gray-300 rounded" 
+                        value={team.name}
+                        onChange={(e) => handleTeamNameChange(index, e.target.value)}
+                      />
+                    ) : (
+                      team.name
+                    )}
+                  </td>
+                  <td className="p-3">
+                    {isEditMode ? (
+                      <input 
+                        type="text" 
+                        className="w-full p-2 border border-gray-300 rounded" 
+                        value={team.wallet}
+                        onChange={(e) => handleWalletChange(index, e.target.value)}
+                      />
+                    ) : (
+                      team.wallet
+                    )}
+                  </td>
+                  {isEditMode && (
+                    <td className="p-3">
+                      <button 
+                        onClick={() => removeTeam(index)}
+                        className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded"
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div>
-        <h2 className="text-xl font-semibold text-blue-600 mb-5 text-center">Voting Cart</h2>
+        <h2 className="text-xl font-semibold text-blue-600 mb-5 text-center">Donation</h2>
         {errorMessage && <p className="text-red-500 mb-3 text-sm">{errorMessage}</p>}
 
         <div className="p-4 mb-5 bg-gray-50 rounded-lg">
@@ -333,7 +426,7 @@ export default function DecentralizedGovernment() {
               : 'bg-blue-600 hover:bg-blue-700 hover:shadow-md hover:-translate-y-0.5'
           }`}
         >
-          Submit Votes
+          Submit NZDD
         </button>
       </div>
 
