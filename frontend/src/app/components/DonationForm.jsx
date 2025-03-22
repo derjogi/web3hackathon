@@ -3,6 +3,11 @@ import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import WalletConnect from './WalletConnect';
 
+function getWallets() {
+  const walletsJson = process.env.NEXT_PUBLIC_WALLETS || '[]';
+  return JSON.parse(walletsJson);
+}
+
 export default function DecentralizedGovernment() {
   const [currentBalance, setCurrentBalance] = useState(100);
   const [totalDonation, setTotalDonation] = useState(0);
@@ -12,13 +17,7 @@ export default function DecentralizedGovernment() {
   const [account, setAccount] = useState('');
   const [network, setNetwork] = useState('');
   const [ethBalance, setEthBalance] = useState(0);
-  const [teams, setTeams] = useState([
-    { name: "Cats Team", wallet: "xo...73" },
-    { name: "Dogs Team", wallet: "xo...72" },
-    { name: "Apes Team", wallet: "xo...55" },
-    { name: "Kiwi Team", wallet: "xo...77" },
-    { name: "Tuatara Team", wallet: "xo...123" }
-  ]);
+  const [teams, setTeams] = useState(getWallets());
   const [isEditMode, setIsEditMode] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamWallet, setNewTeamWallet] = useState('');
@@ -105,34 +104,37 @@ export default function DecentralizedGovernment() {
     }
   };
 
-  const addTransaction = (teamName, amount, teamWallet) => {
+    // Modify the addTransaction function to include transaction hash:
+  const addTransaction = (teamName, amount, teamWallet, transactionHash = null) => {
     const transaction = {
       teamName: teamName,
       amount: amount,
       teamWallet: teamWallet,
-      timestamp: new Date().toLocaleString()
+      timestamp: new Date().toLocaleString(),
+      transactionHash: transactionHash
     };
-
+    
     setTransactions(prev => [transaction, ...prev]);
-  };
+  };  
 
-  const submitVotes = () => {
+  const submitVotes = async () => {
     const totalAmount = Object.values(cart).reduce((sum, amount) => sum + amount, 0);
-
+  
     if (totalAmount <= 0) {
       setErrorMessage("Please add likes to at least one team.");
       return;
     }
-
+  
     if (totalAmount > currentBalance) {
       setErrorMessage("Total donation exceeds your current balance.");
       return;
     }
-
+  
     // Build confirmation message
     let confirmMessage = "Are you sure you want to submit the following NZDD?\n\n";
     let hasVotes = false;
-
+    let transferPromises = [];
+  
     for (const [teamIndex, amount] of Object.entries(cart)) {
       if (amount > 0) {
         const team = teams[teamIndex];
@@ -141,28 +143,52 @@ export default function DecentralizedGovernment() {
         hasVotes = true;
       }
     }
-
+  
     confirmMessage += `\nTotal: ${totalAmount.toFixed(2)} NZDD`;
-
+  
     if (!hasVotes) {
       setErrorMessage("Please add likes to at least one team.");
       return;
     }
-
+  
     if (confirm(confirmMessage)) {
-      for (const [teamIndex, amount] of Object.entries(cart)) {
-        if (amount > 0) {
-          const team = teams[teamIndex];
-          addTransaction(team.name, amount, team.wallet);
+      // Set a loading state if you want to show a spinner
+      // setIsLoading(true);
+      
+      try {
+        // Process each donation as a separate transaction
+        for (const [teamIndex, amount] of Object.entries(cart)) {
+          if (amount > 0) {
+            const team = teams[teamIndex];
+            
+            // Call transferNZDD for each team with a donation
+            const result = await transferNZDD(team.wallet, amount);
+            
+            if (result.success) {
+              // Add successful transaction to history
+              addTransaction(team.name, amount, team.wallet, result.transactionHash);
+            } else {
+              // Handle failed transaction
+              setErrorMessage(`Failed to transfer to ${team.name}: ${result.error}`);
+              // You might want to break the loop or continue based on your requirements
+            }
+          }
         }
+        
+        // Update balance after all transactions
+        setCurrentBalance(prev => prev - totalAmount);
+        resetCart();
+        
+        alert(`Successfully submitted NZDD totaling ${totalAmount.toFixed(2)} NZDD!`);
+      } catch (error) {
+        console.error("Error processing donations:", error);
+        setErrorMessage(`Error processing donations: ${error.message}`);
+      } finally {
+        // Clear loading state if you added one
+        // setIsLoading(false);
       }
-
-      setCurrentBalance(prev => prev - totalAmount);
-      resetCart();
-
-      alert(`Successfully submitted NZDD totaling ${totalAmount.toFixed(2)} NZDD!`);
     }
-  };
+  };  
 
   const resetCart = () => {
     setTotalDonation(0);
@@ -433,20 +459,35 @@ export default function DecentralizedGovernment() {
       </div>
 
       <div className="mt-8 pt-5 border-t border-gray-200">
-        <h3 className="text-lg font-semibold text-blue-600 mb-4">Transaction History</h3>
-        <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg">
-          {transactions.length === 0 ? (
-            <div className="p-3 border-b border-gray-100">No transactions yet</div>
-          ) : (
-            transactions.map((transaction, index) => (
-              <div key={index} className="flex justify-between p-3 border-b border-gray-100 last:border-b-0">
-                <span>{transaction.timestamp} - Voted for {transaction.teamName} ({transaction.teamWallet})</span>
-                <span className="font-bold text-red-500">-{transaction.amount.toFixed(2)} NZDD</span>
-              </div>
-            ))
+  <h3 className="text-lg font-semibold text-blue-600 mb-4">Transaction History</h3>
+  <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg">
+    {transactions.length === 0 ? (
+      <div className="p-3 border-b border-gray-100">No transactions yet</div>
+    ) : (
+      transactions.map((transaction, index) => (
+        <div key={index} className="flex flex-col p-3 border-b border-gray-100 last:border-b-0">
+          <div className="flex justify-between">
+            <span>{transaction.timestamp} - Voted for {transaction.teamName} ({transaction.teamWallet})</span>
+            <span className="font-bold text-red-500">-{transaction.amount.toFixed(2)} NZDD</span>
+          </div>
+          {transaction.transactionHash && (
+            <div className="text-sm text-gray-500 mt-1">
+              TX: <a 
+                href={`https://sepolia.etherscan.io/tx/${transaction.transactionHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-500 hover:underline"
+              >
+                {transaction.transactionHash.substring(0, 10)}...{transaction.transactionHash.substring(transaction.transactionHash.length - 6)}
+              </a>
+            </div>
           )}
         </div>
-      </div>
+      ))
+    )}
+  </div>
+</div>
+
     </div>
   );
 }
