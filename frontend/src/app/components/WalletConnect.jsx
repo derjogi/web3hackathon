@@ -22,7 +22,7 @@ export default function WalletConnect({ onAccountChange }) {
         try {
           await window.ethereum.request({
             method: 'wallet_switchEthereumChain',
-            params: [{ chainId: '11155111' }], // Chain ID for Sepolia
+            params: [{ chainId: '0xAA36A7' }], // Chain ID for Sepolia, hexadecimal
           });
         } catch (switchError) {
           // This error code indicates that the chain has not been added to MetaMask
@@ -32,7 +32,7 @@ export default function WalletConnect({ onAccountChange }) {
                 method: 'wallet_addEthereumChain',
                 params: [
                   {
-                    chainId: '11155111',
+                    chainId: '0xAA36A7',
                     chainName: 'Sepolia Test Network',
                     nativeCurrency: {
                       name: 'ETH',
