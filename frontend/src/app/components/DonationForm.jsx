@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react';
+import { ethers } from 'ethers';
 
 export default function DecentralizedGovernment() {
   const [currentBalance, setCurrentBalance] = useState(100);
@@ -7,6 +8,9 @@ export default function DecentralizedGovernment() {
   const [errorMessage, setErrorMessage] = useState('');
   const [transactions, setTransactions] = useState([]);
   const [cart, setCart] = useState({});
+  const [account, setAccount] = useState('');
+  const [network, setNetwork] = useState('');
+  const [ethBalance, setEthBalance] = useState(0);
 
   const teams = [
     { name: "Cats Team", wallet: "xo...73" },
@@ -19,6 +23,80 @@ export default function DecentralizedGovernment() {
   useEffect(() => {
     calculateAmounts();
   }, [totalDonation]);
+
+  useEffect(() => {
+    // Check if wallet is already connected
+    checkWalletConnection();
+    
+    // Listen for account changes
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', (accounts) => {
+        if (accounts.length > 0) {
+          setAccount(accounts[0]);
+          getWalletBalance(accounts[0]);
+        } else {
+          setAccount('');
+          setEthBalance(0);
+        }
+      });
+    }
+    
+    return () => {
+      if (window.ethereum) {
+        window.ethereum.removeListener('accountsChanged', () => {});
+      }
+    };
+  }, []);
+
+  async function checkWalletConnection() {
+    if (window.ethereum) {
+      try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const accounts = await provider.listAccounts();
+        
+        if (accounts.length > 0) {
+          setAccount(accounts[0]);
+          const network = await provider.getNetwork();
+          setNetwork(network.name);
+          getWalletBalance(accounts[0]);
+        }
+      } catch (error) {
+        console.error("Error checking wallet connection:", error);
+      }
+    }
+  }
+
+  async function connectWallet() {
+    if (window.ethereum) {
+      try {
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const network = await provider.getNetwork();
+        
+        setAccount(accounts[0]);
+        setNetwork(network.name);
+        getWalletBalance(accounts[0]);
+      } catch (error) {
+        console.error("User denied account access");
+      }
+    } else {
+      alert("Please install MetaMask!");
+    }
+  }
+
+  async function getWalletBalance(address) {
+    if (window.ethereum && address) {
+      try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const balance = await provider.getBalance(address);
+        const etherBalance = ethers.utils.formatEther(balance);
+        setEthBalance(parseFloat(etherBalance));
+        setCurrentBalance(parseFloat(etherBalance)); // Update current balance with ETH balance
+      } catch (error) {
+        console.error("Error getting wallet balance:", error);
+      }
+    }
+  }
 
   const calculateAmounts = () => {
     // Calculate total likes
@@ -151,20 +229,36 @@ export default function DecentralizedGovernment() {
       </div>
 
       <div className="mb-8 p-5 bg-gray-50 rounded-lg">
-        <label htmlFor="wallet" className="block mb-1 font-semibold text-gray-600">Wallet Address:</label>
-        <input 
-          type="text" 
-          id="wallet" 
-          className="w-full p-3 mb-4 border border-gray-300 rounded-lg text-base" 
-          defaultValue="xo...75" 
-        />
 
-        <div className="flex justify-between items-center py-3 border-b border-gray-200">
-          <span>Current Balance:</span>
-          <span className="font-bold text-green-600 transition-colors duration-500">
-            {currentBalance.toFixed(2)} NZDD
-          </span>
-        </div>
+        {account ? (
+          <>
+            <label htmlFor="wallet" className="block mb-1 font-semibold text-gray-600">Wallet Address:</label>
+            <input 
+              type="text" 
+              id="wallet" 
+              className="w-full p-3 mb-4 border border-gray-300 rounded-lg text-base" 
+              value={account}
+              readOnly
+            />
+            <div className="flex justify-between items-center py-3 border-b border-gray-200">
+              <span>Network:</span>
+              <span className="font-bold text-blue-600">{network}</span>
+            </div>
+            <div className="flex justify-between items-center py-3 border-b border-gray-200">
+              <span>Current Balance:</span>
+              <span className="font-bold text-green-600 transition-colors duration-500">
+                {ethBalance.toFixed(4)} ETH
+              </span>
+            </div>
+          </>
+        ) : (
+          <button 
+            onClick={connectWallet}
+            className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Connect Wallet
+          </button>
+        )}
       </div>
 
       <div>
