@@ -3,6 +3,11 @@ import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import WalletConnect from './WalletConnect';
 
+function getWallets() {
+  const walletsJson = process.env.NEXT_PUBLIC_WALLETS || '[]';
+  return JSON.parse(walletsJson);
+}
+
 export default function DecentralizedGovernment() {
   const [currentBalance, setCurrentBalance] = useState(100);
   const [totalDonation, setTotalDonation] = useState(0);
@@ -12,10 +17,7 @@ export default function DecentralizedGovernment() {
   const [account, setAccount] = useState('');
   const [network, setNetwork] = useState('');
   const [ethBalance, setEthBalance] = useState(0);
-  const [teams, setTeams] = useState([
-    { name: "Shadow", wallet: "0x9d8F53ecaDe1d20B7f5fD160A9D114516d1Ed63d" },
-    { name: "Dan", wallet: "junglanml.eth" },
-  ]);
+  const [teams, setTeams] = useState(getWallets());
   const [isEditMode, setIsEditMode] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamWallet, setNewTeamWallet] = useState('');
@@ -102,8 +104,9 @@ export default function DecentralizedGovernment() {
     }
   };
 
+
     // Modify the addTransaction function to include transaction hash:
-  const addTransaction = (teamName, amount, teamWallet, transactionHash = null) => {
+  const addTransaction = (teamName, amount, teamWallet, transactionHash = null, transactionHash = null) => {
     const transaction = {
       teamName: teamName,
       amount: amount,
@@ -255,7 +258,7 @@ export default function DecentralizedGovernment() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto bg-white p-6 md:p-8 rounded-lg shadow-md">
+    <div className="max-w-3xl bg-white mx-auto p-6 md:p-8 rounded-lg shadow-md">
       <div className="mb-8 pb-4 border-b-2 border-gray-200 flex justify-between items-center">
         <h1 className="text-3xl font-bold text-blue-600">Hackathon People's Choice</h1>
         <div className="wallet-connect-container">
