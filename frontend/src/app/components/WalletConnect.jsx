@@ -17,6 +17,41 @@ export default function WalletConnect({ onAccountChange }) {
         
         // Then get the selected account
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        
+        // Request switch to Sepolia network
+        try {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: '11155111' }], // Chain ID for Sepolia
+          });
+        } catch (switchError) {
+          // This error code indicates that the chain has not been added to MetaMask
+          if (switchError.code === 4902) {
+            try {
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [
+                  {
+                    chainId: '11155111',
+                    chainName: 'Sepolia Test Network',
+                    nativeCurrency: {
+                      name: 'ETH',
+                      symbol: 'ETH',
+                      decimals: 18
+                    },
+                    rpcUrls: ['https://sepolia.infura.io/v3/'],
+                    blockExplorerUrls: ['https://sepolia.etherscan.io']
+                  }
+                ]
+              });
+            } catch (addError) {
+              console.error("Error adding Sepolia network", addError);
+            }
+          } else {
+            console.error("Failed to switch to Sepolia network", switchError);
+          }
+        }
+        
         const provider = new ethers.providers.Web3Provider(window.ethereum);
         const network = await provider.getNetwork();
         
