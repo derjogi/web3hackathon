@@ -17,13 +17,14 @@ export async function transferNZDD(recipientAddress, amount) {
     // Request account access
     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
     const userAddress = accounts[0];
+    console.log("User address:", userAddress);
     
     // Create a provider and signer
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const signer = provider.getSigner();
     
     // NZDD token contract address
-    const nzddTokenAddress = process.env.NZDD_TOKEN_ADDRESS;
+    const nzddTokenAddress = process.env.NEXT_PUBLIC_NZDD_TOKEN_ADDRESS;
     const nzddContract = new ethers.Contract(nzddTokenAddress, ERC20_ABI, signer);
     const decimals = await nzddContract.decimals();
     const amountInTokenUnits = ethers.utils.parseUnits(amount.toString(), decimals);

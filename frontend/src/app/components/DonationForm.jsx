@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import WalletConnect from './WalletConnect';
-// import { ERC20_ABI } from '../utils/transferNZDD';
+import { transferNZDD } from '../utils/transferNZDD';
 
 function getWallets() {
   const walletsJson = process.env.NEXT_PUBLIC_WALLETS || '[]';
@@ -29,6 +29,7 @@ export default function DecentralizedGovernment() {
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamWallet, setNewTeamWallet] = useState('');
   const [nzddBalance, setNzddBalance] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     calculateAmounts();
@@ -142,7 +143,7 @@ export default function DecentralizedGovernment() {
 
 
     // Modify the addTransaction function to include transaction hash:
-  const addTransaction = (teamName, amount, teamWallet, transactionHash = null, transactionHash = null) => {
+  const addTransaction = (teamName, amount, teamWallet, transactionHash = null) => {
     const transaction = {
       teamName: teamName,
       amount: amount,
@@ -189,8 +190,7 @@ export default function DecentralizedGovernment() {
     }
   
     if (confirm(confirmMessage)) {
-      // Set a loading state if you want to show a spinner
-      // setIsLoading(true);
+      setIsLoading(true);
       
       try {
         // Process each donation as a separate transaction
@@ -215,14 +215,11 @@ export default function DecentralizedGovernment() {
         // Update balance after all transactions
         setCurrentBalance(prev => prev - totalAmount);
         resetCart();
-        
-        alert(`Successfully submitted NZDD totaling ${totalAmount.toFixed(2)} NZDD!`);
       } catch (error) {
         console.error("Error processing donations:", error);
         setErrorMessage(`Error processing donations: ${error.message}`);
       } finally {
-        // Clear loading state if you added one
-        // setIsLoading(false);
+        setIsLoading(false);
       }
     }
   };  
@@ -483,16 +480,18 @@ export default function DecentralizedGovernment() {
         <button 
           onClick={submitTransaction}
           disabled={Object.values(cart).reduce((sum, amount) => sum + amount, 0) <= 0 || 
-                   Object.values(cart).reduce((sum, amount) => sum + amount, 0) > currentBalance}
+                  Object.values(cart).reduce((sum, amount) => sum + amount, 0) > currentBalance ||
+                  isLoading}
           className={`w-full py-3 px-5 text-white font-bold rounded-lg transition-all ${
             Object.values(cart).reduce((sum, amount) => sum + amount, 0) <= 0 || 
-            Object.values(cart).reduce((sum, amount) => sum + amount, 0) > currentBalance
+            Object.values(cart).reduce((sum, amount) => sum + amount, 0) > currentBalance ||
+            isLoading
               ? 'bg-gray-400 cursor-not-allowed'
               : 'bg-blue-600 hover:bg-blue-700 hover:shadow-md hover:-translate-y-0.5'
           }`}
         >
-          Submit NZDD
-        </button>
+        {isLoading ? 'Processing...' : 'Submit NZDD'}
+</button>
       </div>
 
       <div className="mt-8 pt-5 border-t border-gray-200">
