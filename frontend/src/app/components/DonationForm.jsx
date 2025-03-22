@@ -25,6 +25,7 @@ export default function DecentralizedGovernment() {
   const [network, setNetwork] = useState('');
   const [ethBalance, setEthBalance] = useState(0);
   const [teams, setTeams] = useState(getWallets());
+
   const [isEditMode, setIsEditMode] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamWallet, setNewTeamWallet] = useState('');
@@ -324,25 +325,35 @@ export default function DecentralizedGovernment() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full mb-5">
+
+          <table className="w-full mb-5 table-fixed">
             <thead>
               <tr className="bg-gray-50">
-                <th className="p-3 text-left border-b-2 border-gray-200">Team</th>
-                <th className="p-3 text-left border-b-2 border-gray-200">Wallet</th>
-                <th className="p-3 text-left border-b-2 border-gray-200">Likes</th>
-                <th className="p-3 text-left border-b-2 border-gray-200">Amount (NZDD)</th>
+
+
+
+
+                <th className="p-2 text-left border-b-2 border-gray-200 w-1/4">Team</th>
+                <th className="p-2 text-left border-b-2 border-gray-200 w-1/3 truncate">Wallet</th>
+                <th className="p-2 text-left border-b-2 border-gray-200 w-1/6">Likes</th>
+                <th className="p-2 text-left border-b-2 border-gray-200 w-1/6">Amount</th>
               </tr>
             </thead>
             <tbody>
               {teams.map((team, index) => (
                 <tr key={index} className="border-b border-gray-100">
-                  <td className="p-3">{team.name}</td>
-                  <td className="p-3">{team.wallet}</td>
-                  <td className="p-3">
+
+
+
+                  <td className="p-2 truncate">{team.name}</td>
+                  <td className="p-2 truncate text-xs">{team.wallet}</td>
+                  <td className="p-2">
                     <div className="flex items-center">
                       <button 
                         type="button"
-                        className="w-8 h-8 flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-l-lg text-xl font-bold"
+
+
+                        className="min-w-[28px] w-7 h-7 flex items-center justify-center bg-red-200 hover:bg-red-300 text-red-700 rounded-l-lg text-lg font-bold leading-none"
                         onClick={() => {
                           const input = document.querySelector(`[data-team-index="${index}"]`);
                           const currentValue = parseInt(input.value) || 0;
@@ -356,7 +367,8 @@ export default function DecentralizedGovernment() {
                       </button>
                       <input 
                         type="number" 
-                        className="likes-input w-16 p-2 border-y border-gray-300 text-center" 
+
+                        className="likes-input w-12 p-1 border-y border-gray-300 text-center text-sm" 
                         defaultValue="0" 
                         min="0" 
                         step="1" 
@@ -365,7 +377,9 @@ export default function DecentralizedGovernment() {
                       />
                       <button 
                         type="button"
-                        className="w-8 h-8 flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-r-lg text-xl font-bold"
+
+
+                        className="min-w-[28px] w-7 h-7 flex items-center justify-center bg-green-200 hover:bg-green-300 text-green-700 rounded-r-lg text-lg font-bold leading-none"
                         onClick={() => {
                           const input = document.querySelector(`[data-team-index="${index}"]`);
                           const currentValue = parseInt(input.value) || 0;
@@ -377,8 +391,9 @@ export default function DecentralizedGovernment() {
                       </button>
                     </div>
                   </td>
-                  <td className="p-3 font-semibold text-gray-700">
-                    {(cart[index] || 0).toFixed(2)} NZDD
+
+                  <td className="p-2 font-semibold text-gray-700">
+                    {(cart[index] || 0).toFixed(2)}
                   </td>
                 </tr>
               ))}
