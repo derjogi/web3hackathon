@@ -257,7 +257,7 @@ export default function DecentralizedGovernment() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-6 md:p-8 rounded-lg shadow-md">
+    <div className="max-w-3xl bg-white mx-auto p-6 md:p-8 rounded-lg shadow-md">
       <div className="mb-8 pb-4 border-b-2 border-gray-200 flex justify-between items-center">
         <h1 className="text-3xl font-bold text-blue-600">Hackathon People's Choice</h1>
         <div className="wallet-connect-container">
